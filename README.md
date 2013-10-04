@@ -1,4 +1,11 @@
 ember-data-firebase
 ===================
 
-EmberData adapter for working with your Firebase backend
+Ember Data adapter for working with your Firebase backend
+
+Example Usage:
+```
+App.ApplicationAdapter = DS.FirebaseAdapter.extend({
+    firebaseURL: 'https://FIREBASE_NAME.firebaseio.com'
+});
+```
