@@ -9,3 +9,11 @@ App.ApplicationAdapter = DS.FirebaseAdapter.extend({
     firebaseURL: 'https://FIREBASE_NAME.firebaseio.com'
 });
 ```
+
+## Getting Started
+
+```
+bower install
+npm install
+grunt
+```
