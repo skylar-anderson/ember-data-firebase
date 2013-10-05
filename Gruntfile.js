@@ -6,8 +6,7 @@ module.exports = function(grunt) {
             options: {
                 configFile: 'karma.conf.js',
                 browsers: ['Chrome'],
-                reporters: ['dots'],
-                files: ['tests/**/*.js']
+                reporters: ['dots']
             },
             test: {
                 singleRun: true

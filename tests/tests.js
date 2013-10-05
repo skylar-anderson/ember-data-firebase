@@ -43,8 +43,28 @@ test("has the correct interface", function () {
 module("find");
 
 asyncTest("can retrieve a single value", function () {
-    store.find(null, "chicago", "currently/temperature").then(function (temp) {
+    store.find(null, "chicago/currently", "temperature").then(function (temp) {
         ok(typeof temp === "number");
+        start();
+    });
+});
+
+module("findMany");
+
+asyncTest("can retrieve multiple values", function () {
+    expect(2);
+    store.findMany(null, "chicago/currently", ["temperature", "summary"]).then(function (vals) {
+        ok(typeof vals[0] === "number");
+        ok(typeof vals[1] === "string");
+        start();
+    });
+});
+
+module("findAll");
+
+asyncTest("can retrieve all values", function () {
+    store.findAll(null, "chicago/daily/data").then(function (days) {
+        ok(days.length === 8);
         start();
     });
 });
