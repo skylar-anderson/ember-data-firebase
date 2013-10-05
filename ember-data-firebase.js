@@ -2,7 +2,53 @@
 /*global DS*/
 'use strict';
 
+var fb;
+
+DS.FirebaseModel = DS.Model.extend({
+    init: function() {
+        this._super();
+        this.on('didLoad', this._initLiveBindings.bind(this));
+        this.on('didCreate', this._initLiveBindings.bind(this));
+    },
+    getRef: function() {
+
+        var name = Ember.String.pluralize(this.constructor),
+            ref;
+
+        if(!this.get('id')) {
+            ref = fb.child(name).push();
+            this.set("id", ref.name());
+        } else {
+            ref = fb.child(name).child(this.get("id"));
+        }
+
+        return ref;
+
+    },
+    _initLiveBindings: function() {
+
+    },
+    deleteRecord: function() {
+        this.disableBindings();
+        this._super();
+    },
+    disableBindings: function() {
+        var ref = this.getRef();
+        this.bindingsDisabled = true;
+        ref.off("child_added");
+        ref.off("child_changed");
+        ref.off("child_removed");
+    }
+});
+
 DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
+
+    init: function() {
+        this._super();
+        this.fb = fb = new Firebase(this.firebaseURL);
+    },
+
+    fb: undefined,
 
     find: function (store, type, id) {
 
@@ -130,22 +176,7 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
         });
     },
 
-  // private
-
-    _buildFirebaseURL: function(type, klass, id) {
-
-        var fbURL = this.firebaseURL,
-            modelURL = (klass && klass.url) ? klass.url : type;
-
-        if (!fbURL) {
-            throw new Error("DS.FirebaseAdapter requires a FirebaseURL to be specified");
-        }
-
-        if (id) {
-            return "%@/%@/%@".fmt(fbURL, modelURL, id);
-        } else {
-            return "%@/%@".fmt(fbURL, modelURL);
-        }
-
-    }
+    _getRefForType: function(type) {
+        return this.fb.child(Ember.String.pluralize(type));
+    },
 });

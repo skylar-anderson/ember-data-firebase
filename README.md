@@ -1,7 +1,7 @@
 ember-data-firebase
 ===================
 
-Ember Data adapter for working with your Firebase backend
+Ember Data v1.0.0 Beta adapter for working with your Firebase backend.
 
 Example Usage:
 ```
