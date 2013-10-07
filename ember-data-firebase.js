@@ -5,15 +5,17 @@
 var fb;
 
 DS.FirebaseModel = DS.Model.extend({
-    init: function() {
+    init3: function() {
         this._super();
         this.on('didLoad', this._initLiveBindings.bind(this));
         this.on('didCreate', this._initLiveBindings.bind(this));
     },
     getRef: function() {
 
-        var name = Ember.String.pluralize(this.constructor),
+        var name = this.constructor.url,
             ref;
+
+        console.log(name);
 
         if(!this.get('id')) {
             ref = fb.child(name).push();
@@ -45,20 +47,25 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
 
     init: function() {
         this._super();
-        this.fb = fb = new Firebase(this.firebaseURL);
+
+        if(!this.firebaseURL) {
+            throw new Error("DS.FirebaseAdapter must be initialized with a firebaseURL");
+        }
+
+        this.fb = new Firebase(this.firebaseURL);
+        fb = this.fb;
     },
 
     fb: undefined,
 
     find: function (store, type, id) {
 
-        var url = this._buildFirebaseURL(type, null, id),
-            fb = new Firebase(url);
+        var ref = this._getRefForType(type);
 
         return new Ember.RSVP.Promise(function(resolve, reject) {
-            fb.on("value", function(snapshot) {
+            ref.on("value", function(snapshot) {
                 resolve(snapshot.val());
-            }, function(error) { reject(error) });
+            }, function(error) { reject(error); });
         });
 
     },
@@ -68,7 +75,6 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
         var promises = [];
 
         Ember.forEach(ids, function(id) {
-            console.log("Finding ID " + id);
             promises.push(this.find(store, type, id));
         }).bind(this);
 
@@ -87,12 +93,11 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
 
     findAll: function (store, type) {
 
-        var url = this._buildFirebaseURL(type),
-            fb = new Firebase(url);
+        var ref = this._getRefForType(type);
 
         return new Ember.RSVP.Promise(function(resolve, reject) {
 
-            fb.once('value', function(snapshot) {
+            ref.once('value', function(snapshot) {
 
                 var results = [];
 
@@ -111,22 +116,14 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
 
     createRecord: function (store, type, record) {
 
-        var url = this._buildFirebaseURL(type, record.constructor),
-            fb = new Firebase(url),
-            data = record.serialize({ includeId: true }),
-            fbRecord;
-
-        if(data.id) {
-            fbRecord = fb.child(data.id);
-        } else {
-            fbRecord = fb.push();
-        }
+        var ref = record.getRef(),
+            data = record.serialize({ includeId: true });
 
         return new Ember.RSVP.Promise(function(resolve, reject) {
-            fbRecord.set(data, function(error) {
+            ref.set(data, function(error) {
                 if(error) {
-                    throw new Error("Firebase error: ", error);
                     reject();
+                    throw new Error("Firebase error: ", error);
                 } else {
                     resolve();
                 }
@@ -137,7 +134,7 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
 
     updateRecord: function (store, type, record) {
 
-        var url = this._buildFirebaseURL(type, record.constructor, record.get('id')),
+        var url = this._buildFirebaseURL(type, record.constructor.toString(), record.get('id')),
             fb = new Firebase(url),
             data = record.serialize({ includeId: true });
 
@@ -145,8 +142,8 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
 
             fb.update(data, function(error) {
                 if(error) {
-                    throw new Error("Firebase error: ", error);
                     reject();
+                    throw new Error("Firebase error: ", error);
                 } else {
                     resolve();
                 }
@@ -165,8 +162,8 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
             fb.set(null, function(error) {
 
                 if(error) {
-                    throw new Error("Firebase error: ", error);
                     reject();
+                    throw new Error("Firebase error: ", error);
                 } else {
                     resolve();
                 }
@@ -177,6 +174,6 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
     },
 
     _getRefForType: function(type) {
-        return this.fb.child(Ember.String.pluralize(type));
-    },
+        return this.fb.child(type.url);
+    }
 });
