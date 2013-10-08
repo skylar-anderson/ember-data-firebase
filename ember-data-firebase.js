@@ -15,8 +15,6 @@ DS.FirebaseModel = DS.Model.extend({
         var name = this.constructor.url,
             ref;
 
-        console.log(name);
-
         if(!this.get('id')) {
             ref = fb.child(name).push();
             this.set("id", ref.name());
@@ -60,7 +58,7 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
 
     find: function (store, type, id) {
 
-        var ref = this._getRefForType(type);
+        var ref = this._getRefForType(type).child(id);
 
         return new Ember.RSVP.Promise(function(resolve, reject) {
             ref.on("value", function(snapshot) {
@@ -72,11 +70,12 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
 
     findMany: function (store, type, ids) {
 
-        var promises = [];
+        var promises = [],
+            find = this.find;
 
-        Ember.forEach(ids, function(id) {
+        ids.forEach(function(id) {
             promises.push(this.find(store, type, id));
-        }).bind(this);
+        }.bind(this))
 
         return Ember.RSVP.all(promises);
     },
@@ -134,13 +133,12 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
 
     updateRecord: function (store, type, record) {
 
-        var url = this._buildFirebaseURL(type, record.constructor.toString(), record.get('id')),
-            fb = new Firebase(url),
+        var ref = record.getRef(),
             data = record.serialize({ includeId: true });
 
         return new Ember.RSVP.Promise(function(resolve, reject) {
 
-            fb.update(data, function(error) {
+            ref.update(data, function(error) {
                 if(error) {
                     reject();
                     throw new Error("Firebase error: ", error);
@@ -154,12 +152,11 @@ DS.FirebaseAdapter = DS.Adapter.extend(Ember.Evented, {
 
     deleteRecord: function (store, type, record) {
 
-        var url = this._buildFirebaseURL(type, record.constructor, record.get('id')),
-            fb = new Firebase(url);
+        var ref = record.getRef();
 
         return new Ember.RSVP.Promise(function(resolve, reject) {
 
-            fb.set(null, function(error) {
+            ref.set(null, function(error) {
 
                 if(error) {
                     reject();
