@@ -4,31 +4,6 @@
 
 var fb;
 
-DS.FirebaseSerializer = DS.JSONSerializer.extend({
-    extractSingle: function() {
-
-    },
-    serializeBelongsTo: function(record, json, relationship) {
-        console.log("Serialize Belongs To");
-        return this._super(record, json, relationship);
-
-    },
-    serializeHasMany: function(record, json, relationship) {
-
-       var key = relationship.key,
-        relationshipType = DS.RelationshipChange.determineRelationshipType(record.constructor, relationship);
-
-        console.log("Serialize hasMany:");
-        console.log(key);
-        console.log(record);
-        console.log(relationshipType);
-        console.log("---");
-
-        return this._super(record, json, relationship);
-
-    }
-});
-
 DS.FirebaseModel = DS.Model.extend({
     getRef: function() {
         var name = this.constructor.url,
@@ -57,7 +32,38 @@ DS.FirebaseLiveModel = DS.FirebaseModel.extend({
         var ref = this.getRef(),
             record = this;
 
-        ref.on("child_added", function() {
+        ref.on("child_added", function(snapshot) {
+
+            console.log("Child Added " + record.constructor.url + " " + snapshot.name() + " " + snapshot.val());
+
+            var fieldName = snapshot.name(),
+                fieldVal = snapshot.val(),
+                relationship = record._isFieldARelationship(fieldName);
+
+            if(relationship) {
+
+                snapshot.forEach(function(childSnapshot) {
+
+                    var fieldValue = childSnapshot.val(),
+                        newObj;
+
+                    if(!record._relationshipHasChild(fieldName, fieldValue)) {
+                        console.log("Child Added " + record.constructor.url + " " + fieldName + " " + fieldValue )
+                        newObj = record.store.find(relationship.storeType, fieldValue).then(function() {
+                            record.get(field).pushObject(newObj);
+                        });
+                    }
+                });
+
+            } else {
+                // if child doesn't exist or is different
+                if(record.get(fieldName) !== fieldVal) {
+                    record.set(fieldName, fieldVal);
+                }
+
+            }
+
+            //record.triggerLater('didUpdate', record);
             // This event will be triggered once for each initial child at this location,
             // and it will be triggered again every time a new child is added. The
             // DataSnapshot passed into the callback will reflect the data for the relevant
@@ -73,6 +79,27 @@ DS.FirebaseLiveModel = DS.FirebaseModel.extend({
         ref.on("child_removed", function(snapshot) {
             record.set(snapshot.name(), null);
         });
+
+    },
+    _isFieldARelationship: function(fieldName) {
+
+        var isRelationship = false;
+
+        Ember.get(this.constructor, 'relationshipsByName').forEach(function(name, relationship) {
+            if(fieldName == name) {
+                isRelationship = { storeType: Ember.String.singularize(relationship.type.url) };
+            }
+        });
+
+        return isRelationship;
+    },
+    _relationshipHasChild: function(fieldName, fieldValue) {
+
+        var matches = this.get(fieldName).filter(function(field) {
+            return field.get('id') === fieldValue;
+        });
+
+        return matches.length !== 0;
 
     },
     deleteRecord: function() {
