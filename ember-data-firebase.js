@@ -34,34 +34,7 @@ DS.FirebaseLiveModel = DS.FirebaseModel.extend({
 
         ref.on("child_added", function(snapshot) {
 
-            console.log("Child Added " + record.constructor.url + " " + snapshot.name() + " " + snapshot.val());
-
-            var fieldName = snapshot.name(),
-                fieldVal = snapshot.val(),
-                relationship = record._isFieldARelationship(fieldName);
-
-            if(relationship) {
-
-                snapshot.forEach(function(childSnapshot) {
-
-                    var fieldValue = childSnapshot.val(),
-                        newObj;
-
-                    if(!record._relationshipHasChild(fieldName, fieldValue)) {
-                        console.log("Child Added " + record.constructor.url + " " + fieldName + " " + fieldValue )
-                        newObj = record.store.find(relationship.storeType, fieldValue).then(function() {
-                            record.get(field).pushObject(newObj);
-                        });
-                    }
-                });
-
-            } else {
-                // if child doesn't exist or is different
-                if(record.get(fieldName) !== fieldVal) {
-                    record.set(fieldName, fieldVal);
-                }
-
-            }
+            record._liveUpdate(snapshot);
 
             //record.triggerLater('didUpdate', record);
             // This event will be triggered once for each initial child at this location,
@@ -73,7 +46,7 @@ DS.FirebaseLiveModel = DS.FirebaseModel.extend({
         });
 
         ref.on("child_changed", function(snapshot) {
-            record.set(snapshot.name(), snapshot.val());
+            record._liveUpdate(snapshot);
         });
 
         ref.on("child_removed", function(snapshot) {
@@ -81,12 +54,42 @@ DS.FirebaseLiveModel = DS.FirebaseModel.extend({
         });
 
     },
+    _liveUpdate: function(snapshot) {
+
+        var record = this,
+            fieldName = snapshot.name(),
+            fieldVal = snapshot.val(),
+            relationship = record._isFieldARelationship(fieldName);
+
+        if(relationship && record.get(fieldName).constructor.toString() !== "DS.PromiseArray") {
+
+            snapshot.forEach(function(childSnapshot) {
+
+                var fieldValue = childSnapshot.val(),
+                    newObj;
+
+                if(!record._relationshipHasChild(fieldName, fieldValue)) {
+                    newObj = record.store.find(relationship.storeType, fieldValue).then(function(val) {
+                        record.get(fieldName).pushObject(val);
+                    });
+                }
+            });
+
+        } else {
+
+            if(record.get(fieldName) !== fieldVal) {
+                record.set(fieldName, fieldVal);
+            }
+
+        }
+
+    },
     _isFieldARelationship: function(fieldName) {
 
         var isRelationship = false;
 
         Ember.get(this.constructor, 'relationshipsByName').forEach(function(name, relationship) {
-            if(fieldName == name) {
+            if(fieldName === name) {
                 isRelationship = { storeType: Ember.String.singularize(relationship.type.url) };
             }
         });
