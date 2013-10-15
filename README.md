@@ -1,7 +1,7 @@
-ember-data-firebase
+Ember Data + Firebase
 ===================
 
-Ember Data v1.0.0 Beta adapter for working with your Firebase backend.
+Ember Data v1.0.0+ Beta adapter for working with your Firebase backend.  Inspired by [ember-firebase-adapter](https://github.com/thomasboyt/ember-firebase-adapter) and [ember-localstorage-adapter](https://github.com/rpflorence/ember-localstorage-adapter).
 
 ## Getting Started
 
@@ -57,4 +57,4 @@ newUser.save();
 
 ```
 
-Use `FirebaseLiveModel` if you wish for your model to receive updates from Firebase.
+Use `FirebaseLiveModel` if you wish for your model to receive live updates from Firebase.
